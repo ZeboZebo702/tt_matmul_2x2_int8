@@ -177,4 +177,5 @@ https://github.com/ZeboZebo702/tt_matmul_2x2_int8
 ## Author
 
 Danila Gorodecky (Gorodetsky), INESC-ID, Lisbon, Portugal
+
 danila.gorodecky@gmail.com
