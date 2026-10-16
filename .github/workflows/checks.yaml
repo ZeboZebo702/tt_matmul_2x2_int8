@@ -1,0 +1,20 @@
+# Quick correctness checks on every push (about 2 minutes).
+name: checks
+on:
+  push:
+  workflow_dispatch:
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - name: Fix Windows line endings
+        run: find . -name '*.sh' -o -name '*.py' -o -name '*.env' | grep -v '^./.git/' | xargs sed -i 's/\r$//'
+      - run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q iverilog yosys
+          pip install -q cocotb==2.0.1 pytest==8.4.2
+      - run: bash scripts/verify.sh --quick

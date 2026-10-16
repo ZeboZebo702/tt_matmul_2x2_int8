@@ -1,0 +1,135 @@
+# Experiment: every (level x variant x clock period) goes through the full
+# Tiny Tapeout / LibreLane flow on GF180, in parallel, then one report is built.
+# Start it by hand: Actions -> sweep -> Run workflow.
+name: sweep
+
+on:
+  workflow_dispatch:
+    inputs:
+      levels:
+        description: "Levels: single (one MAC, 1x1 tile), full (whole tt_um_essen). Comma-separated."
+        default: "single"
+      variants:
+        description: "Variants of mac_unit.v. Comma-separated."
+        default: "orig,tree,hybrid,table,fused_eq"
+      periods:
+        description: "Clock periods in ns (20 = 50 MHz). Comma-separated."
+        default: "40,30,20"
+      full_verify:
+        description: "Also run the exhaustive simulation and formal proof first (~30 min longer)"
+        type: boolean
+        default: false
+
+jobs:
+  verify:
+    name: correctness checks
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - name: Fix Windows line endings
+        run: find . -name '*.sh' -o -name '*.py' -o -name '*.env' | grep -v '^./.git/' | xargs sed -i 's/\r$//'
+      - name: Install simulator and synthesis tools
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q iverilog yosys
+          pip install -q cocotb==2.0.1 pytest==8.4.2
+      - name: Run checks
+        env:
+          FULL: ${{ inputs.full_verify }}
+        run: |
+          if [ "$FULL" = "true" ]; then bash scripts/verify.sh; else bash scripts/verify.sh --quick; fi
+
+  plan:
+    name: build the list of runs
+    runs-on: ubuntu-24.04
+    outputs:
+      matrix: ${{ steps.m.outputs.matrix }}
+    steps:
+      - id: m
+        env:
+          LEVELS: ${{ inputs.levels }}
+          VARIANTS: ${{ inputs.variants }}
+          PERIODS: ${{ inputs.periods }}
+        run: |
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import json, os, re
+          split = lambda s: [x.strip() for x in s.split(",") if x.strip()]
+          levels, variants, periods = split(os.environ["LEVELS"]), split(os.environ["VARIANTS"]), split(os.environ["PERIODS"])
+          assert all(l in ("single", "full") for l in levels), levels
+          assert all(v in ("orig", "presat", "fused", "fused_eq", "tree", "hybrid", "table") for v in variants), variants
+          assert all(re.fullmatch(r"[0-9]+(\.[0-9]+)?", p) for p in periods), periods
+          runs = [dict(level=l, variant=v, period=p) for l in levels for v in variants for p in periods]
+          print("matrix=" + json.dumps({"include": runs}))
+          PY
+
+  run:
+    name: ${{ matrix.level }} ${{ matrix.variant }} ${{ matrix.period }}ns
+    needs: [verify, plan]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 150
+    strategy:
+      fail-fast: false
+      max-parallel: 20
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - name: Fix Windows line endings
+        run: find . -name '*.sh' -o -name '*.py' -o -name '*.env' | grep -v '^./.git/' | xargs sed -i 's/\r$//'
+      - name: Run the chip flow (LibreLane, dockerized)
+        run: bash scripts/run_one.sh "${{ matrix.level }}" "${{ matrix.variant }}" "${{ matrix.period }}"
+      - name: Keep only the useful files
+        if: always()
+        run: |
+          T="${{ matrix.level }}-${{ matrix.variant }}-${{ matrix.period }}"
+          mkdir -p keep/$T
+          cp results/$T.json keep/ 2>/dev/null || true
+          cp work/$T/harden.log keep/$T/ 2>/dev/null || true
+          cp work/$T/runs/wokwi/final/metrics.csv keep/$T/ 2>/dev/null || true
+          cp work/$T/src/config_merged.json keep/$T/ 2>/dev/null || true
+          # timing reports after routing: worst paths per corner
+          for d in work/$T/runs/wokwi/*-openroad-stapostpnr/*/; do
+            c=$(basename "$d"); mkdir -p keep/$T/sta/$c
+            cp "$d"/max.rpt "$d"/summary.rpt keep/$T/sta/$c/ 2>/dev/null || true
+          done
+      - name: Upload
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: result-${{ matrix.level }}-${{ matrix.variant }}-${{ matrix.period }}
+          path: keep/
+          retention-days: 30
+
+  report:
+    name: build report
+    needs: run
+    if: always()
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - name: Fix Windows line endings
+        run: find . -name '*.sh' -o -name '*.py' -o -name '*.env' | grep -v '^./.git/' | xargs sed -i 's/\r$//'
+      - run: pip install -q matplotlib
+      - uses: actions/download-artifact@v7
+        with:
+          pattern: result-*
+          path: results
+          merge-multiple: true
+      - name: Make tables and charts
+        run: |
+          python3 scripts/report.py results report
+          cat report/report.md >> "$GITHUB_STEP_SUMMARY"
+          cp -r results report/runs
+      - name: Upload report
+        uses: actions/upload-artifact@v7
+        with:
+          name: report
+          path: report/
