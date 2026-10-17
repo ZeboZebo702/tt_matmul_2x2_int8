@@ -11,7 +11,7 @@ Both units have the same ports, registers and latency as the original.
 The results are bit-exact.
 All numbers come from the standard Tiny Tapeout flow (LibreLane) run in GitHub Actions.
 
-The full description is in the report: [detailed report](paper/main.pdf) (D. Gorodecky, “MAC units for a 2x2 int8 systolic array on Tiny Tapeout” // arXiv: 2603.24387 [cs.AR]. DOI: 10.48550/arXiv.2603.24387).
+The full description is in the report: [detailed report](10.48550/arXiv.2603.24387).
 
 ## What a MAC unit does
 
