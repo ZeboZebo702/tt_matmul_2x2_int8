@@ -91,7 +91,7 @@ Every variant passed three checks. They test different things.
 Run them yourself (needs `iverilog`, `yosys`, `pip install cocotb==2.0.1 pytest`):
 
 ```bash
-bash scripts/verify.sh           # all checks, about 30 min
+bash scripts/verify.sh           # all checks, about 15 min
 bash scripts/verify.sh --quick   # without checks 1 and 2, about 1 min
 ```
 
