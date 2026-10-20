@@ -169,7 +169,7 @@ The variants are based on `mac_unit.v` and `booth_radix4_mul.v` by Julia Desmaze
 If you use this work, please cite the report:
 
 ```
-D. Gorodecky, “MAC units for a 2x2 int8 systolic array on Tiny Tapeout” // arXiv: 10.48550 [cs.AR]. DOI: 10.48550/arXiv.2610.24326
+D. Gorodecky, “MAC units for a 2x2 int8 systolic array on Tiny Tapeout” // arXiv:2610.24326 [cs.AR]. DOI: 10.48550/arXiv.2610.24326
 ```
 
 ## Author
