@@ -1,8 +1,7 @@
 # MAC units for a 2x2 int8 systolic array on Tiny Tapeout
 
-Two drop-in replacements for the MAC unit of
-[tt_um_essen](https://github.com/Essenceia/Systolic_MAC_with_DFT),
-a 2x2 int8 systolic array by Julia Desmazes, taped out on Tiny Tapeout (GF180).
+Two drop-in replacements for the MAC [unit tt_um_essen](https://tinytapeout.com/chips/ttgf0p2/tt_um_essen),
+a [2x2 int8 systolic array](https://github.com/Essenceia/Systolic_MAC_with_DFT) by Julia Desmazes, taped out on Tiny Tapeout (GF180).
 
 - **hybrid** is smaller: one MAC unit is 4-6% smaller, the whole chip is up to 3.2% smaller.
 - **fused_eq** is faster: the critical path is 20% shorter for one unit and 14% shorter for the whole chip.
