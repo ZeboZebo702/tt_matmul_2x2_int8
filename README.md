@@ -11,7 +11,7 @@ Both units have the same ports, registers and latency as the original.
 The results are bit-exact.
 All numbers come from the standard Tiny Tapeout flow (LibreLane) run in GitHub Actions.
 
-The full description is in the report: [detailed report](https://arxiv.org/abs/2610.24326).
+The full description is in the [report](https://arxiv.org/abs/2610.24326).
 
 ## What a MAC unit does
 
